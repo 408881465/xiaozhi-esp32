@@ -20,12 +20,19 @@ void SerialBridge::Initialize(uart_port_t uart_num, int tx_pin, int rx_pin, int 
     uart_config.source_clk = UART_SCLK_APB;
 
     uart_num_ = uart_num;
-    // Install driver (TX buffer 2KB, no RX)
-    uart_driver_install(uart_num_, 2048, 0, 0, nullptr, 0);
+
+    // Install driver: 2KB TX buffer; enable RX buffer only when RX pin is provided
+    int rx_buf = (rx_pin >= 0) ? 256 : 0;
+    uart_driver_install(uart_num_, 2048, rx_buf, 0, nullptr, 0);
     uart_param_config(uart_num_, &uart_config);
 
     int rx = (rx_pin >= 0) ? rx_pin : UART_PIN_NO_CHANGE;
     uart_set_pin(uart_num_, tx_pin, rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if (rx_pin >= 0) {
+        // Ensure RX idles high when cable is not connected
+        gpio_pullup_en((gpio_num_t)rx_pin);
+        uart_flush_input(uart_num_);
+    }
 
     if (!mutex_) mutex_ = xSemaphoreCreateMutex();
     enabled_ = true;
