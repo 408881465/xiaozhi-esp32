@@ -7,6 +7,8 @@
 
 #include "application.h"
 #include "system_info.h"
+#include "serial_bridge.h"
+
 
 #define TAG "main"
 
@@ -21,8 +23,25 @@ extern "C" void app_main(void)
         ESP_LOGW(TAG, "Erasing NVS flash to fix corruption");
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
+
+
     }
     ESP_ERROR_CHECK(ret);
+
+    // Initialize downstream serial bridge if pins are defined
+    #ifndef SERIAL_BRIDGE_BAUDRATE
+    #define SERIAL_BRIDGE_BAUDRATE 115200
+    #endif
+    #ifdef SERIAL_BRIDGE_TX_PIN
+        SerialBridge::Initialize(UART_NUM_1, SERIAL_BRIDGE_TX_PIN,
+    #ifdef SERIAL_BRIDGE_RX_PIN
+                                  SERIAL_BRIDGE_RX_PIN,
+    #else
+                                  -1,
+    #endif
+                                  SERIAL_BRIDGE_BAUDRATE);
+    #endif
+
 
     // Launch the application
     auto& app = Application::GetInstance();

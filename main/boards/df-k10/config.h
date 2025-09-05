@@ -41,6 +41,18 @@
 #define DISPLAY_BACKLIGHT_PIN GPIO_NUM_NC
 #define DISPLAY_BACKLIGHT_OUTPUT_INVERT false
 
+
+/*
+ * Serial bridge UART pins to downstream MCU (disabled by default).
+ * WARNING: GPIO_NUM_47 and GPIO_NUM_48 are currently used by AUDIO_CODEC_I2C_SDA_PIN/SCL_PIN.
+ *          Do NOT reuse them for UART unless you reroute the codec I2C to other pins.
+ *          Choose two free pins on DF-K10 (e.g., GPIO_NUM_13 and GPIO_NUM_14) instead.
+ * Usage: uncomment and set to your chosen pins, then rebuild.
+ */
+#define SERIAL_BRIDGE_TX_PIN  GPIO_NUM_1
+#define SERIAL_BRIDGE_RX_PIN  GPIO_NUM_2
+#define SERIAL_BRIDGE_BAUDRATE 115200
+
 /* DFRobot K10 Camera pins */
 #define PWDN_GPIO_NUM       -1
 #define RESET_GPIO_NUM      -1

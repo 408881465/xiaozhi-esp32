@@ -17,6 +17,8 @@
 #include <driver/spi_common.h>
 #include <wifi_station.h>
 
+#include "serial_bridge.h"
+
 #include "esp_io_expander_tca95xx_16bit.h"
 
 #define TAG "DF-K10"
@@ -248,6 +250,21 @@ public:
         InitializeIli9341Display();
         InitializeButtons();
         InitializeIot();
+
+        // Initialize downstream UART bridge if configured in config.h
+        #ifndef SERIAL_BRIDGE_BAUDRATE
+        #define SERIAL_BRIDGE_BAUDRATE 115200
+        #endif
+        #ifdef SERIAL_BRIDGE_TX_PIN
+            SerialBridge::Initialize(UART_NUM_1, SERIAL_BRIDGE_TX_PIN,
+        #ifdef SERIAL_BRIDGE_RX_PIN
+                                      SERIAL_BRIDGE_RX_PIN,
+        #else
+                                      -1,
+        #endif
+                                      SERIAL_BRIDGE_BAUDRATE);
+        #endif
+
         InitializeCamera();
     }
 
