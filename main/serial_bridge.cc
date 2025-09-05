@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdio>
 #include <esp_timer.h>
+#include <driver/gpio.h>
 
 bool SerialBridge::enabled_ = false;
 uart_port_t SerialBridge::uart_num_ = UART_NUM_1;
@@ -30,7 +31,7 @@ void SerialBridge::Initialize(uart_port_t uart_num, int tx_pin, int rx_pin, int 
     uart_set_pin(uart_num_, tx_pin, rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (rx_pin >= 0) {
         // Ensure RX idles high when cable is not connected
-        gpio_pullup_en((gpio_num_t)rx_pin);
+        gpio_set_pull_mode((gpio_num_t)rx_pin, GPIO_PULLUP_ONLY);
         uart_flush_input(uart_num_);
     }
 
