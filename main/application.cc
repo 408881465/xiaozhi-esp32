@@ -40,6 +40,8 @@ static bool ParseGarbageCategoryFromText(const char* text, int* out_code, const 
         {"厨余", 1, "kitchen", "厨余", false},
         {"有害垃圾", 2, "hazardous", "有害", false},
         {"有害", 2, "hazardous", "有害", false},
+        {"干垃圾", 3, "other", "其他", false},
+        {"黑桶", 3, "other", "其他", false},
         {"其他垃圾", 3, "other", "其他", false},
         {"其它垃圾", 3, "other", "其他", false},
         {"其他", 3, "other", "其他", true},
