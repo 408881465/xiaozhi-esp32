@@ -544,18 +544,13 @@ void Application::Start() {
                         const char* __p = text->valuestring;
                         while (*__p == ' ' || *__p == '\t') ++__p;
                         if (*__p != '%') {
-                            SerialBridge::Sendf("Application", "<<", "%s", text->valuestring);
-                            // Try to detect garbage category from assistant reply and emit a structured JSON line for MCU
+                            // Detect garbage category first, then emit exactly one JSON line
                             int cat_code = -1; const char* cat = nullptr; const char* cat_zh = nullptr;
-                            if (ParseGarbageCategoryFromText(text->valuestring, &cat_code, &cat, &cat_zh)) {
-                                uint64_t ts_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
-                                static uint64_t s_last_emit_ms = 0; static int s_last_code = -1;
-                                // Debounce: avoid duplicate emits within 3s for the same category
-                                if (!(cat_code == s_last_code && (ts_ms - s_last_emit_ms) < 3000)) {
-                                    s_last_code = cat_code; s_last_emit_ms = ts_ms;
-                                    char idbuf[32]; snprintf(idbuf, sizeof(idbuf), "tts_%llu", (unsigned long long)ts_ms);
-                                    SerialBridge::SendAppGarbageSort(cat ? cat : "", cat_code, idbuf, "cloud", "1.0", cat_zh);
-                                }
+                            bool has_cat = ParseGarbageCategoryFromText(text->valuestring, &cat_code, &cat, &cat_zh);
+                            if (has_cat) {
+                                SerialBridge::SendAppMsgWithGarbage(text->valuestring, cat ? cat : "");
+                            } else {
+                                SerialBridge::Sendf("Application", "<<", "%s", text->valuestring);
                             }
                         } else {
                             ++__p; // skip '%'

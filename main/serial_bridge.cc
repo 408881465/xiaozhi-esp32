@@ -546,3 +546,30 @@ void SerialBridge::SendAppGarbageSort(const char* category, int /*category_code*
     uart_write_bytes(uart_num_, line, o);
     if (mutex_) xSemaphoreGive(mutex_);
 }
+
+
+void SerialBridge::SendAppMsgWithGarbage(const char* msg, const char* category) {
+    if (!enabled_) return;
+    if (!msg) msg = "";
+    if (!category) category = "";
+
+    char msg_esc[256];
+    char cat_esc[64];
+    escape_json_(msg, msg_esc, sizeof(msg_esc));
+    escape_json_(category, cat_esc, sizeof(cat_esc));
+
+    char line[512]; size_t o = 0;
+    begin_common(line, o, sizeof(line), "Application", "<<");
+    append_str_bounded(line, sizeof(line), o, ",\"msg\":\"");
+    append_str_bounded(line, sizeof(line), o, msg_esc);
+    append_str_bounded(line, sizeof(line), o, "\"");
+    append_str_bounded(line, sizeof(line), o, ",\"topic\":\"garbage_sort\"");
+    append_str_bounded(line, sizeof(line), o, ",\"category\":\"");
+    append_str_bounded(line, sizeof(line), o, cat_esc);
+    append_str_bounded(line, sizeof(line), o, "\"" );
+    end_line(line, o, sizeof(line));
+
+    if (mutex_) xSemaphoreTake(mutex_, portMAX_DELAY);
+    uart_write_bytes(uart_num_, line, o);
+    if (mutex_) xSemaphoreGive(mutex_);
+}
