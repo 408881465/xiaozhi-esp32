@@ -93,7 +93,7 @@ choice BOARD_TYPE
         depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_BREAD_COMPACT_WIFI_CAM
         bool "面包板新版接线（WiFi）+ LCD + Camera"
-        depends on IDF_TARGET_ESP32S3     
+        depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_BREAD_COMPACT_ML307
         bool "面包板新版接线（ML307 AT）"
         depends on IDF_TARGET_ESP32S3
@@ -283,7 +283,7 @@ choice BOARD_TYPE
         bool "正点原子DNESP32S3-BOX2-WIFI"
         depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_ATK_DNESP32S3_BOX2_4G
-        bool "正点原子DNESP32S3-BOX2-4G" 
+        bool "正点原子DNESP32S3-BOX2-4G"
         depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_ATK_DNESP32S3M_WIFI
         bool "正点原子DNESP32S3M-WIFI"
@@ -499,7 +499,7 @@ config USE_CUSTOM_WAKE_WORD
     depends on (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && SPIRAM && (!USE_AFE_WAKE_WORD)
     help
         需要 ESP32 S3 与 PSRAM 支持
-        
+
 config CUSTOM_WAKE_WORD
     string "Custom Wake Word"
     default "xiao tu dou"
@@ -512,7 +512,7 @@ config CUSTOM_WAKE_WORD_DISPLAY
     default "小土豆"
     depends on USE_CUSTOM_WAKE_WORD
     help
-        唤醒后发送给服务器的问候语 
+        唤醒后发送给服务器的问候语
 
 config CUSTOM_WAKE_WORD_THRESHOLD
     int "Custom Wake Word Threshold (%)"
@@ -579,5 +579,17 @@ choice I2S_TYPE_TAIJIPI_S3
     config TAIJIPAI_I2S_TYPE_PDM
         bool "I2S Type PDM"
 endchoice
+
+
+menu "Serial Bridge"
+
+config SERIAL_BRIDGE_EMIT_PLAN
+    bool "Emit MCP plan events (stage=plan)"
+    default n
+    help
+        When enabled, the device will also emit MCP plan events (stage=plan).
+        Disable to reduce bandwidth and only emit exec events.
+
+endmenu
 
 endmenu

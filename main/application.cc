@@ -493,9 +493,9 @@ void Application::Start() {
                                 if (len >= sizeof(params_kv)) len = sizeof(params_kv) - 1;
                                 memcpy(params_kv, lb + 1, len);
                                 params_kv[len] = '\0';
-                                SerialBridge::SendMcpToolCallWithParams(dev, act, params_kv);
+                                SerialBridge::SendMcpPlanWithParams(dev, act, params_kv);
                             } else {
-                                SerialBridge::SendMcpToolCallWithParams(dev, act, nullptr);
+                                SerialBridge::SendMcpPlanWithParams(dev, act, nullptr);
                             }
                         }
                     }

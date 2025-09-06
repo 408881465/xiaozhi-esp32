@@ -22,11 +22,17 @@ public:
     // Structured JSON helpers (field-based for easy parsing)
     static void SendMcpToolCall(const char* device, const char* action);
     static void SendMcpToolCallWithParams(const char* device, const char* action, const char* params_kv);
-    static void SendLedSetBrightness(int level);
-    static void SendLedSetSingleColor(int idx, int r, int g, int b);
-    static void SendLedSetAllColor(int r, int g, int b);
-    static void SendLedBlink(int r, int g, int b, int interval_ms);
-    static void SendLedScroll(int r, int g, int b, int length, int interval_ms);
+    static unsigned int SendMcpPlanWithParams(const char* device, const char* action, const char* params_kv);
+    static unsigned int SendMcpExecWithParams(const char* device, const char* action, const char* params_kv);
+
+    // Runtime toggle: emit or suppress plan events
+    static void SetEmitPlan(bool enable);
+
+    static void SendLedSetBrightness(int level, int parent_id = -1);
+    static void SendLedSetSingleColor(int idx, int r, int g, int b, int parent_id = -1);
+    static void SendLedSetAllColor(int r, int g, int b, int parent_id = -1);
+    static void SendLedBlink(int r, int g, int b, int interval_ms, int parent_id = -1);
+    static void SendLedScroll(int r, int g, int b, int length, int interval_ms, int parent_id = -1);
 
 private:
     static bool enabled_;
