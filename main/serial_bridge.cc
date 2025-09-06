@@ -141,7 +141,12 @@ static inline int i32_to_dec(int v, char* out, size_t out_sz) {
 
 void SerialBridge::SendMcpToolCall(const char* device, const char* action) {
     if (!enabled_) return;
-    if (!device) device = ""; if (!action) action = "";
+    if (!device) {
+        device = "";
+    }
+    if (!action) {
+        action = "";
+    }
     char dev_esc[128]; char act_esc[128];
     escape_json_(device, dev_esc, sizeof(dev_esc));
     escape_json_(action, act_esc, sizeof(act_esc));
@@ -260,7 +265,12 @@ static inline bool is_digit_str_(const char* s){ if(!s||!*s) return false; if(*s
 
 void SerialBridge::SendMcpToolCallWithParams(const char* device, const char* action, const char* params_kv) {
     if (!enabled_) return;
-    if (!device) device = ""; if (!action) action = "";
+    if (!device) {
+        device = "";
+    }
+    if (!action) {
+        action = "";
+    }
     char dev_esc[128]; char act_esc[128];
     escape_json_(device, dev_esc, sizeof(dev_esc));
     escape_json_(action, act_esc, sizeof(act_esc));
@@ -289,8 +299,14 @@ void SerialBridge::SendMcpToolCallWithParams(const char* device, const char* act
             while (*p && *p!='=' && *p!=',' && *p!=')' && *p!=' ' && *p!='\t' && ki < sizeof(key)-1) key[ki++] = *p++;
             key[ki] = '\0';
             while (*p==' '||*p=='\t') ++p;
-            if (*p!='=') { // skip to next comma
-                while (*p && *p!=',') ++p; if (*p==',') ++p; continue;
+            if (*p != '=') { // skip to next comma
+                while (*p && *p != ',') {
+                    ++p;
+                }
+                if (*p == ',') {
+                    ++p;
+                }
+                continue;
             }
             ++p; // skip '='
             p = skip_ws_(p);
