@@ -25,6 +25,11 @@ public:
     static unsigned int SendMcpPlanWithParams(const char* device, const char* action, const char* params_kv);
     static unsigned int SendMcpExecWithParams(const char* device, const char* action, const char* params_kv);
 
+    // Application specific helpers
+    // Emit a structured line for garbage classification, alongside human-readable lines
+    // Example fields: {"tag":"Application","type":"<<","topic":"garbage_sort","category":"other","category_code":3,"id":"...","ver":"1.0","source":"cloud"}
+    static void SendAppGarbageSort(const char* category, int category_code, const char* id = nullptr, const char* source = "cloud", const char* ver = "1.0", const char* category_zh = nullptr);
+
     // Runtime toggle: emit or suppress plan events
     static void SetEmitPlan(bool enable);
 
