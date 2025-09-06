@@ -18,9 +18,48 @@
 #include <driver/gpio.h>
 #include <arpa/inet.h>
 #include <font_awesome.h>
+#include <esp_timer.h>
 
 #define TAG "Application"
 
+// Parse Chinese/English reply text to detect garbage category
+// Returns true if detected, and fills out_code (0..3), out_cat (ascii), out_cat_zh (UTF-8)
+static bool ParseGarbageCategoryFromText(const char* text, int* out_code, const char** out_cat, const char** out_cat_zh) {
+    if (!text) return false;
+    // Heuristic: only consider messages that mention "垃圾" when matching generic terms
+    bool mentions_laji = (strstr(text, "垃圾") != nullptr);
+
+    struct Item { const char* pat; int code; const char* cat; const char* cat_zh; bool require_laji; };
+    // Order matters: longer/more specific first
+    static const Item items[] = {
+        {"可回收物", 0, "recyclable", "可回收", false},
+        {"可回收垃圾", 0, "recyclable", "可回收", false},
+        {"可回收", 0, "recyclable", "可回收", false},
+        {"厨余垃圾", 1, "kitchen", "厨余", false},
+        {"湿垃圾", 1, "kitchen", "厨余", false},
+        {"厨余", 1, "kitchen", "厨余", false},
+        {"有害垃圾", 2, "hazardous", "有害", false},
+        {"有害", 2, "hazardous", "有害", false},
+        {"其他垃圾", 3, "other", "其他", false},
+        {"其它垃圾", 3, "other", "其他", false},
+        {"其他", 3, "other", "其他", true},
+        // English fallbacks
+        {"recyclable", 0, "recyclable", "可回收", false},
+        {"kitchen", 1, "kitchen", "厨余", false},
+        {"hazardous", 2, "hazardous", "有害", false},
+        {"other", 3, "other", "其他", false},
+    };
+    for (const auto& it : items) {
+        if (it.require_laji && !mentions_laji) continue;
+        if (strstr(text, it.pat)) {
+            if (out_code) *out_code = it.code;
+            if (out_cat) *out_cat = it.cat;
+            if (out_cat_zh) *out_cat_zh = it.cat_zh;
+            return true;
+        }
+    }
+    return false;
+}
 
 static const char* const STATE_STRINGS[] = {
     "unknown",
@@ -504,6 +543,18 @@ void Application::Start() {
                         while (*__p == ' ' || *__p == '\t') ++__p;
                         if (*__p != '%') {
                             SerialBridge::Sendf("Application", "<<", "%s", text->valuestring);
+                            // Try to detect garbage category from assistant reply and emit a structured JSON line for MCU
+                            int cat_code = -1; const char* cat = nullptr; const char* cat_zh = nullptr;
+                            if (ParseGarbageCategoryFromText(text->valuestring, &cat_code, &cat, &cat_zh)) {
+                                uint64_t ts_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
+                                static uint64_t s_last_emit_ms = 0; static int s_last_code = -1;
+                                // Debounce: avoid duplicate emits within 3s for the same category
+                                if (!(cat_code == s_last_code && (ts_ms - s_last_emit_ms) < 3000)) {
+                                    s_last_code = cat_code; s_last_emit_ms = ts_ms;
+                                    char idbuf[32]; snprintf(idbuf, sizeof(idbuf), "tts_%llu", (unsigned long long)ts_ms);
+                                    SerialBridge::SendAppGarbageSort(cat ? cat : "", cat_code, idbuf, "cloud", "1.0", cat_zh);
+                                }
+                            }
                         } else {
                             ++__p; // skip '%'
                             while (*__p == ' ' || *__p == '\t') ++__p;

@@ -525,3 +525,49 @@ unsigned int SerialBridge::SendMcpExecWithParams(const char* device, const char*
     return id;
 }
 
+
+
+void SerialBridge::SendAppGarbageSort(const char* category, int category_code, const char* id, const char* source, const char* ver, const char* category_zh) {
+    if (!enabled_) return;
+    if (!category) category = "";
+    if (!source) source = "";
+    if (!ver) ver = "";
+
+    char cat_esc[64]; escape_json_(category, cat_esc, sizeof(cat_esc));
+    char src_esc[32]; escape_json_(source, src_esc, sizeof(src_esc));
+    char ver_esc[16]; escape_json_(ver, ver_esc, sizeof(ver_esc));
+    char id_esc[64]; if (id) escape_json_(id, id_esc, sizeof(id_esc));
+    char catzh_esc[32]; if (category_zh) escape_json_(category_zh, catzh_esc, sizeof(catzh_esc));
+
+    char line[320]; size_t o = 0; begin_common(line, o, sizeof(line), "Application", "<<");
+    append_str_bounded(line, sizeof(line), o, ",\"topic\":\"garbage_sort\"");
+    append_str_bounded(line, sizeof(line), o, ",\"category\":\"");
+    append_str_bounded(line, sizeof(line), o, cat_esc);
+    append_str_bounded(line, sizeof(line), o, "\"");
+    append_str_bounded(line, sizeof(line), o, ",\"category_code\":");
+    char code_buf[16]; i32_to_dec(category_code, code_buf, sizeof(code_buf));
+    append_str_bounded(line, sizeof(line), o, code_buf);
+    if (category_zh && category_zh[0]) {
+        append_str_bounded(line, sizeof(line), o, ",\"category_zh\":\"");
+        append_str_bounded(line, sizeof(line), o, catzh_esc);
+        append_str_bounded(line, sizeof(line), o, "\"");
+    }
+    if (id && id[0]) {
+        append_str_bounded(line, sizeof(line), o, ",\"id\":\"");
+        append_str_bounded(line, sizeof(line), o, id_esc);
+        append_str_bounded(line, sizeof(line), o, "\"");
+    }
+    append_str_bounded(line, sizeof(line), o, ",\"ver\":\"");
+    append_str_bounded(line, sizeof(line), o, ver_esc);
+    append_str_bounded(line, sizeof(line), o, "\"");
+    if (source && source[0]) {
+        append_str_bounded(line, sizeof(line), o, ",\"source\":\"");
+        append_str_bounded(line, sizeof(line), o, src_esc);
+        append_str_bounded(line, sizeof(line), o, "\"");
+    }
+    end_line(line, o, sizeof(line));
+
+    if (mutex_) xSemaphoreTake(mutex_, portMAX_DELAY);
+    uart_write_bytes(uart_num_, line, o);
+    if (mutex_) xSemaphoreGive(mutex_);
+}
