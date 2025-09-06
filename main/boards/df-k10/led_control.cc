@@ -41,6 +41,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             ESP_LOGI(TAG, "Set LedStrip brightness level to %d", level);
             brightness_level_ = level;
             led_strip_->SetBrightness(LevelToBrightness(brightness_level_), 4);
+            do { char kv[32]; snprintf(kv, sizeof(kv), "level=%d", brightness_level_); SerialBridge::SendMcpToolCallWithParams("led_strip", "set_brightness", kv); } while(0);
             SerialBridge::SendLedSetBrightness(brightness_level_);
 
             // 保存设置
@@ -64,6 +65,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             int blue = properties["blue"].value<int>();
             ESP_LOGI(TAG, "Set led strip single color %d to %d, %d, %d",
                 index, red, green, blue);
+            do { char kv[64]; snprintf(kv, sizeof(kv), "idx=%d,r=%d,g=%d,b=%d", index, red, green, blue); SerialBridge::SendMcpToolCallWithParams("led_strip", "set_single_color", kv); } while(0);
             SerialBridge::SendLedSetSingleColor(index, red, green, blue);
             led_strip_->SetSingleColor(index, RGBToColor(red, green, blue));
             return true;
@@ -81,6 +83,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             int blue = properties["blue"].value<int>();
             ESP_LOGI(TAG, "Set led strip all color to %d, %d, %d",
                 red, green, blue);
+            do { char kv[48]; snprintf(kv, sizeof(kv), "r=%d,g=%d,b=%d", red, green, blue); SerialBridge::SendMcpToolCallWithParams("led_strip", "set_all_color", kv); } while(0);
             SerialBridge::SendLedSetAllColor(red, green, blue);
             led_strip_->SetAllColor(RGBToColor(red, green, blue));
             return true;
@@ -100,6 +103,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             int interval = properties["interval"].value<int>();
             ESP_LOGI(TAG, "Blink led strip with color %d, %d, %d, interval %dms",
                 red, green, blue, interval);
+            do { char kv[64]; snprintf(kv, sizeof(kv), "r=%d,g=%d,b=%d,interval=%d", red, green, blue, interval); SerialBridge::SendMcpToolCallWithParams("led_strip", "blink", kv); } while(0);
             SerialBridge::SendLedBlink(red, green, blue, interval);
             led_strip_->Blink(RGBToColor(red, green, blue), interval);
             return true;
@@ -121,6 +125,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             int length = properties["length"].value<int>();
             ESP_LOGI(TAG, "Scroll led strip with color %d, %d, %d, length %d, interval %dms",
                 red, green, blue, length, interval);
+            do { char kv[80]; snprintf(kv, sizeof(kv), "r=%d,g=%d,b=%d,length=%d,interval=%d", red, green, blue, length, interval); SerialBridge::SendMcpToolCallWithParams("led_strip", "scroll", kv); } while(0);
             SerialBridge::SendLedScroll(red, green, blue, length, interval);
             StripColor low = RGBToColor(4, 4, 4);
             StripColor high = RGBToColor(red, green, blue);
