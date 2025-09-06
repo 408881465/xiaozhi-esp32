@@ -47,8 +47,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             ESP_LOGI(TAG, "Set LedStrip brightness level to %d", level);
             brightness_level_ = level;
             led_strip_->SetBrightness(LevelToBrightness(brightness_level_), 4);
-            do { char kv[32]; snprintf(kv, sizeof(kv), "level=%d", brightness_level_); SerialBridge::SendMcpToolCallWithParams("led_strip", "set_brightness", kv); } while(0);
-            SerialBridge::SendLedSetBrightness(brightness_level_);
+            do { char kv[32]; snprintf(kv, sizeof(kv), "level=%d", brightness_level_); unsigned int eid = SerialBridge::SendMcpExecWithParams("led_strip", "set_brightness", kv); SerialBridge::SendLedSetBrightness(brightness_level_, (int)eid); } while(0);
 
             // 保存设置
             Settings settings("led_strip", true);
@@ -88,8 +87,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             int blue = properties["blue"].value<int>();
             ESP_LOGI(TAG, "Set led strip all color to %d, %d, %d",
                 red, green, blue);
-            do { char kv[48]; snprintf(kv, sizeof(kv), "r=%d,g=%d,b=%d", red, green, blue); SerialBridge::SendMcpToolCallWithParams("led_strip", "set_all_color", kv); } while(0);
-            SerialBridge::SendLedSetAllColor(red, green, blue);
+            do { char kv[48]; snprintf(kv, sizeof(kv), "r=%d,g=%d,b=%d", red, green, blue); unsigned int eid = SerialBridge::SendMcpExecWithParams("led_strip", "set_all_color", kv); SerialBridge::SendLedSetAllColor(red, green, blue, (int)eid); } while(0);
             led_strip_->SetAllColor(RGBToColor(red, green, blue));
             return true;
         });

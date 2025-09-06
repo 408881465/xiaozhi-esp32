@@ -1,4 +1,5 @@
 #include "serial_bridge.h"
+#include "sdkconfig.h"
 
 #include <cstring>
 #include <cstdio>
@@ -8,6 +9,18 @@
 bool SerialBridge::enabled_ = false;
 uart_port_t SerialBridge::uart_num_ = UART_NUM_1;
 SemaphoreHandle_t SerialBridge::mutex_ = nullptr;
+
+static unsigned int s_event_id = 1;
+
+#ifdef CONFIG_SERIAL_BRIDGE_EMIT_PLAN
+static bool s_emit_plan = true;
+#else
+static bool s_emit_plan = false;
+#endif
+
+void SerialBridge::SetEmitPlan(bool enable) {
+    s_emit_plan = enable;
+}
 
 void SerialBridge::Initialize(uart_port_t uart_num, int tx_pin, int rx_pin, int baudrate) {
     if (enabled_) return;
@@ -194,11 +207,14 @@ static void end_line(char* line, size_t& o, size_t cap) {
     append_str_bounded(line, cap, o, "}\n");
 }
 
-void SerialBridge::SendLedSetBrightness(int level) {
+void SerialBridge::SendLedSetBrightness(int level, int parent_id) {
     if (!enabled_) return;
-    char line[192]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "set_brightness");
-    append_str_bounded(line, sizeof(line), o, ",");
-    append_str_bounded(line, sizeof(line), o, "\"level\":");
+    char line[224]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "set_brightness");
+    if (parent_id >= 0) {
+        append_str_bounded(line, sizeof(line), o, ",\"parent_id\":");
+        char pid[16]; i32_to_dec(parent_id, pid, sizeof(pid)); append_str_bounded(line, sizeof(line), o, pid);
+    }
+    append_str_bounded(line, sizeof(line), o, ",\"level\":");
     char nbuf[16]; i32_to_dec(level, nbuf, sizeof(nbuf));
     append_str_bounded(line, sizeof(line), o, nbuf);
     end_line(line, o, sizeof(line));
@@ -207,9 +223,13 @@ void SerialBridge::SendLedSetBrightness(int level) {
     if (mutex_) xSemaphoreGive(mutex_);
 }
 
-void SerialBridge::SendLedSetSingleColor(int idx, int r, int g, int b) {
+void SerialBridge::SendLedSetSingleColor(int idx, int r, int g, int b, int parent_id) {
     if (!enabled_) return;
-    char line[224]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "set_single_color");
+    char line[256]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "set_single_color");
+    if (parent_id >= 0) {
+        append_str_bounded(line, sizeof(line), o, ",\"parent_id\":");
+        char pid[16]; i32_to_dec(parent_id, pid, sizeof(pid)); append_str_bounded(line, sizeof(line), o, pid);
+    }
     append_num_field(line, o, sizeof(line), "idx", idx, false);
     append_num_field(line, o, sizeof(line), "r", r, false);
     append_num_field(line, o, sizeof(line), "g", g, false);
@@ -220,9 +240,13 @@ void SerialBridge::SendLedSetSingleColor(int idx, int r, int g, int b) {
     if (mutex_) xSemaphoreGive(mutex_);
 }
 
-void SerialBridge::SendLedSetAllColor(int r, int g, int b) {
+void SerialBridge::SendLedSetAllColor(int r, int g, int b, int parent_id) {
     if (!enabled_) return;
-    char line[192]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "set_all_color");
+    char line[224]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "set_all_color");
+    if (parent_id >= 0) {
+        append_str_bounded(line, sizeof(line), o, ",\"parent_id\":");
+        char pid[16]; i32_to_dec(parent_id, pid, sizeof(pid)); append_str_bounded(line, sizeof(line), o, pid);
+    }
     append_num_field(line, o, sizeof(line), "r", r, false);
     append_num_field(line, o, sizeof(line), "g", g, false);
     append_num_field(line, o, sizeof(line), "b", b, false);
@@ -232,9 +256,13 @@ void SerialBridge::SendLedSetAllColor(int r, int g, int b) {
     if (mutex_) xSemaphoreGive(mutex_);
 }
 
-void SerialBridge::SendLedBlink(int r, int g, int b, int interval_ms) {
+void SerialBridge::SendLedBlink(int r, int g, int b, int interval_ms, int parent_id) {
     if (!enabled_) return;
-    char line[224]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "blink");
+    char line[256]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "blink");
+    if (parent_id >= 0) {
+        append_str_bounded(line, sizeof(line), o, ",\"parent_id\":");
+        char pid[16]; i32_to_dec(parent_id, pid, sizeof(pid)); append_str_bounded(line, sizeof(line), o, pid);
+    }
     append_num_field(line, o, sizeof(line), "r", r, false);
     append_num_field(line, o, sizeof(line), "g", g, false);
     append_num_field(line, o, sizeof(line), "b", b, false);
@@ -245,9 +273,13 @@ void SerialBridge::SendLedBlink(int r, int g, int b, int interval_ms) {
     if (mutex_) xSemaphoreGive(mutex_);
 }
 
-void SerialBridge::SendLedScroll(int r, int g, int b, int length, int interval_ms) {
+void SerialBridge::SendLedScroll(int r, int g, int b, int length, int interval_ms, int parent_id) {
     if (!enabled_) return;
-    char line[240]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "scroll");
+    char line[272]; size_t o = 0; begin_common(line, o, sizeof(line), "LedStrip", "scroll");
+    if (parent_id >= 0) {
+        append_str_bounded(line, sizeof(line), o, ",\"parent_id\":");
+        char pid[16]; i32_to_dec(parent_id, pid, sizeof(pid)); append_str_bounded(line, sizeof(line), o, pid);
+    }
     append_num_field(line, o, sizeof(line), "r", r, false);
     append_num_field(line, o, sizeof(line), "g", g, false);
     append_num_field(line, o, sizeof(line), "b", b, false);
@@ -310,6 +342,151 @@ void SerialBridge::SendMcpToolCallWithParams(const char* device, const char* act
             }
             ++p; // skip '='
             p = skip_ws_(p);
+
+unsigned int SerialBridge::SendMcpPlanWithParams(const char* device, const char* action, const char* params_kv) {
+    if (!enabled_) return 0;
+    if (!s_emit_plan) return 0;
+    if (!device) { device = ""; }
+    if (!action) { action = ""; }
+
+    // Prepare escaped strings
+    char dev_esc[128]; char act_esc[128];
+    escape_json_(device, dev_esc, sizeof(dev_esc));
+    escape_json_(action, act_esc, sizeof(act_esc));
+
+    // Build line
+    if (mutex_) xSemaphoreTake(mutex_, portMAX_DELAY);
+    unsigned int id = s_event_id++;
+    uint64_t ts_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
+    char ts_buf[24]; u64_to_dec(ts_ms, ts_buf, sizeof(ts_buf));
+    char id_buf[16]; i32_to_dec((int)id, id_buf, sizeof(id_buf));
+
+    char line[560]; size_t o = 0;
+    append_str_bounded(line, sizeof(line), o, "{\"ts\":");
+    append_str_bounded(line, sizeof(line), o, ts_buf);
+    append_str_bounded(line, sizeof(line), o, ",\"id\":");
+    append_str_bounded(line, sizeof(line), o, id_buf);
+    append_str_bounded(line, sizeof(line), o, ",\"tag\":\"MCP\",\"type\":\"tool_call\",\"stage\":\"plan\",");
+    append_str_bounded(line, sizeof(line), o, "\"device\":\"");
+    append_str_bounded(line, sizeof(line), o, dev_esc);
+    append_str_bounded(line, sizeof(line), o, "\",\"action\":\"");
+    append_str_bounded(line, sizeof(line), o, act_esc);
+    append_str_bounded(line, sizeof(line), o, "\",\"params\":{");
+
+    // Parse params if any (plan often has none)
+    bool first = true;
+    if (params_kv) {
+        const char* p = params_kv;
+        while (p && *p) {
+            p = skip_ws_(p);
+            char key[48] = {0}; size_t ki = 0;
+            while (*p && *p!='=' && *p!=',' && *p!=')' && *p!=' ' && *p!='\t' && ki < sizeof(key)-1) key[ki++] = *p++;
+            key[ki] = '\0';
+            while (*p==' '||*p=='\t') ++p;
+            if (*p != '=') { while (*p && *p != ',') { ++p; } if (*p == ',') { ++p; } continue; }
+            ++p; p = skip_ws_(p);
+            char val_raw[80] = {0}; size_t vi = 0;
+            while (*p && *p!=',' && *p!=')' && vi < sizeof(val_raw)-1) {
+                if (*p==' '||*p=='\t') { const char* q=p; while(*q==' '||*q=='\t') ++q; if (*q==','||*q==')'||*q=='\0'){ p=q; break; } }
+                val_raw[vi++] = *p++;
+            }
+            val_raw[vi] = '\0';
+            if (key[0]) {
+                if (!first) append_str_bounded(line, sizeof(line), o, ",");
+                first = false;
+                append_str_bounded(line, sizeof(line), o, "\"");
+                char key_esc[96]; escape_json_(key, key_esc, sizeof(key_esc));
+                append_str_bounded(line, sizeof(line), o, key_esc);
+                append_str_bounded(line, sizeof(line), o, "\":");
+                if (is_digit_str_(val_raw)) {
+                    append_str_bounded(line, sizeof(line), o, val_raw);
+                } else {
+                    append_str_bounded(line, sizeof(line), o, "\"");
+                    char val_esc[160]; escape_json_(val_raw, val_esc, sizeof(val_esc));
+                    append_str_bounded(line, sizeof(line), o, val_esc);
+                    append_str_bounded(line, sizeof(line), o, "\"");
+                }
+            }
+            if (*p==',') ++p;
+        }
+    }
+    append_str_bounded(line, sizeof(line), o, "}}\n");
+
+    uart_write_bytes(uart_num_, line, o);
+    if (mutex_) xSemaphoreGive(mutex_);
+    return id;
+}
+
+unsigned int SerialBridge::SendMcpExecWithParams(const char* device, const char* action, const char* params_kv) {
+    if (!enabled_) return 0;
+    if (!device) { device = ""; }
+    if (!action) { action = ""; }
+
+    char dev_esc[128]; char act_esc[128];
+    escape_json_(device, dev_esc, sizeof(dev_esc));
+    escape_json_(action, act_esc, sizeof(act_esc));
+
+    if (mutex_) xSemaphoreTake(mutex_, portMAX_DELAY);
+    unsigned int id = s_event_id++;
+    uint64_t ts_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
+    char ts_buf[24]; u64_to_dec(ts_ms, ts_buf, sizeof(ts_buf));
+    char id_buf[16]; i32_to_dec((int)id, id_buf, sizeof(id_buf));
+
+    char line[560]; size_t o = 0;
+    append_str_bounded(line, sizeof(line), o, "{\"ts\":");
+    append_str_bounded(line, sizeof(line), o, ts_buf);
+    append_str_bounded(line, sizeof(line), o, ",\"id\":");
+    append_str_bounded(line, sizeof(line), o, id_buf);
+    append_str_bounded(line, sizeof(line), o, ",\"tag\":\"MCP\",\"type\":\"tool_call\",\"stage\":\"exec\",");
+    append_str_bounded(line, sizeof(line), o, "\"device\":\"");
+    append_str_bounded(line, sizeof(line), o, dev_esc);
+    append_str_bounded(line, sizeof(line), o, "\",\"action\":\"");
+    append_str_bounded(line, sizeof(line), o, act_esc);
+    append_str_bounded(line, sizeof(line), o, "\",\"params\":{");
+
+    bool first = true;
+    if (params_kv) {
+        const char* p = params_kv;
+        while (p && *p) {
+            p = skip_ws_(p);
+            char key[48] = {0}; size_t ki = 0;
+            while (*p && *p!='=' && *p!=',' && *p!=')' && *p!=' ' && *p!='\t' && ki < sizeof(key)-1) key[ki++] = *p++;
+            key[ki] = '\0';
+            while (*p==' '||*p=='\t') ++p;
+            if (*p != '=') { while (*p && *p != ',') { ++p; } if (*p == ',') { ++p; } continue; }
+            ++p; p = skip_ws_(p);
+            char val_raw[80] = {0}; size_t vi = 0;
+            while (*p && *p!=',' && *p!=')' && vi < sizeof(val_raw)-1) {
+                if (*p==' '||*p=='\t') { const char* q=p; while(*q==' '||*q=='\t') ++q; if (*q==','||*q==')'||*q=='\0'){ p=q; break; } }
+                val_raw[vi++] = *p++;
+            }
+            val_raw[vi] = '\0';
+            if (key[0]) {
+                if (!first) append_str_bounded(line, sizeof(line), o, ",");
+                first = false;
+                append_str_bounded(line, sizeof(line), o, "\"");
+                char key_esc[96]; escape_json_(key, key_esc, sizeof(key_esc));
+                append_str_bounded(line, sizeof(line), o, key_esc);
+                append_str_bounded(line, sizeof(line), o, "\":");
+                if (is_digit_str_(val_raw)) {
+                    append_str_bounded(line, sizeof(line), o, val_raw);
+                } else {
+                    append_str_bounded(line, sizeof(line), o, "\"");
+                    char val_esc[160]; escape_json_(val_raw, val_esc, sizeof(val_esc));
+                    append_str_bounded(line, sizeof(line), o, val_esc);
+                    append_str_bounded(line, sizeof(line), o, "\"");
+                }
+            }
+            if (*p==',') ++p;
+        }
+    }
+    append_str_bounded(line, sizeof(line), o, "}}\n");
+
+    uart_write_bytes(uart_num_, line, o);
+    if (mutex_) xSemaphoreGive(mutex_);
+    return id;
+}
+
             // parse value token
             char val_raw[80] = {0}; size_t vi = 0;
             while (*p && *p!=',' && *p!=')' && vi < sizeof(val_raw)-1) {
