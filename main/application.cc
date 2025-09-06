@@ -499,7 +499,39 @@ void Application::Start() {
                 auto text = cJSON_GetObjectItem(root, "text");
                 if (cJSON_IsString(text)) {
                     ESP_LOGI(TAG, "<< %s", text->valuestring);//小智回复的信息
-                    SerialBridge::Sendf("Application", "<<", "%s", text->valuestring);
+                    {
+                        const char* __p = text->valuestring;
+                        while (*__p == ' ' || *__p == '\t') ++__p;
+                        if (*__p != '%') {
+                            SerialBridge::Sendf("Application", "<<", "%s", text->valuestring);
+                        } else {
+                            ++__p; // skip '%'
+                            while (*__p == ' ' || *__p == '\t') ++__p;
+                            if (strncmp(__p, "self.", 5) == 0) __p += 5;
+                            char dev[32] = {0};
+                            size_t di = 0;
+                            while (*__p && *__p != '.' && *__p != ' ' && *__p != '\t' && *__p != '(' && di < sizeof(dev) - 1) dev[di++] = *__p++;
+                            if (*__p == '.') ++__p;
+                            char act[32] = {0};
+                            size_t ai = 0;
+                            while (*__p && *__p != '.' && *__p != ' ' && *__p != '\t' && *__p != '(' && ai < sizeof(act) - 1) act[ai++] = *__p++;
+                            if (dev[0] == '\0') strncpy(dev, "unknown", sizeof(dev) - 1);
+                            if (act[0] == '\0') strncpy(act, "unknown", sizeof(act) - 1);
+                            // Try to extract params inside parentheses: key=value pairs
+                            const char* lb = strchr(__p, '(');
+                            const char* rb = (lb ? strchr(lb + 1, ')') : nullptr);
+                            char params_kv[128] = {0};
+                            if (lb && rb && rb > lb + 1) {
+                                size_t len = (size_t)(rb - (lb + 1));
+                                if (len >= sizeof(params_kv)) len = sizeof(params_kv) - 1;
+                                memcpy(params_kv, lb + 1, len);
+                                params_kv[len] = '\0';
+                                SerialBridge::SendMcpToolCallWithParams(dev, act, params_kv);
+                            } else {
+                                SerialBridge::SendMcpToolCallWithParams(dev, act, nullptr);
+                            }
+                        }
+                    }
                     Schedule([this, display, message = std::string(text->valuestring)]() {
                         display->SetChatMessage("assistant", message.c_str());
                     });

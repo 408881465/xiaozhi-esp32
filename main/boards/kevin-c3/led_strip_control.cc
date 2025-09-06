@@ -47,6 +47,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             ESP_LOGI(TAG, "Set LedStrip brightness level to %d", level);
             brightness_level_ = level;
             led_strip_->SetBrightness(LevelToBrightness(brightness_level_), 4);
+            SerialBridge::SendLedSetBrightness(brightness_level_);
 
             // 保存设置
             Settings settings("led_strip", true);
@@ -85,7 +86,7 @@ LedStripControl::LedStripControl(CircularStrip* led_strip)
             int blue = properties["blue"].value<int>();
             ESP_LOGI(TAG, "Set led strip all color to %d, %d, %d",
                 red, green, blue);
-            SerialBridge::Sendf("LedStrip", "set_all_color", "r=%d,g=%d,b=%d", red, green, blue);
+            SerialBridge::SendLedSetAllColor(red, green, blue);
             led_strip_->SetAllColor(RGBToColor(red, green, blue));
             return true;
         });
