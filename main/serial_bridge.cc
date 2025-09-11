@@ -3,8 +3,11 @@
 
 #include <cstring>
 #include <cstdio>
+#include <string>
 #include <esp_timer.h>
 #include <driver/gpio.h>
+#include <cJSON.h>
+#include "sensor_registry.h"
 
 bool SerialBridge::enabled_ = false;
 uart_port_t SerialBridge::uart_num_ = UART_NUM_1;
@@ -46,6 +49,9 @@ void SerialBridge::Initialize(uart_port_t uart_num, int tx_pin, int rx_pin, int 
         // Ensure RX idles high when cable is not connected
         gpio_set_pull_mode((gpio_num_t)rx_pin, GPIO_PULLUP_ONLY);
         uart_flush_input(uart_num_);
+        // Start RX task to parse incoming JSON lines from MCU
+        xTaskCreate(&SerialBridge::rx_task_, "serial_rx", 3072, nullptr, 5, nullptr);
+
     }
 
     if (!mutex_) mutex_ = xSemaphoreCreateMutex();
@@ -573,3 +579,52 @@ void SerialBridge::SendAppMsgWithGarbage(const char* msg, const char* category) 
     uart_write_bytes(uart_num_, line, o);
     if (mutex_) xSemaphoreGive(mutex_);
 }
+
+// -------------------------
+// UART RX task and parser
+// -------------------------
+
+static void handle_rx_line_impl_(const char* s) {
+    if (!s || !*s) return;
+    cJSON* j = cJSON_Parse(s);
+    if (!j) return;
+    do {
+        const cJSON* tag = cJSON_GetObjectItemCaseSensitive(j, "tag");
+        const cJSON* type = cJSON_GetObjectItemCaseSensitive(j, "type");
+        if (!cJSON_IsString(tag) || !cJSON_IsString(type)) break;
+        if (strcmp(tag->valuestring, "MCU") != 0) break;
+        if (strcmp(type->valuestring, "sensor_update") != 0) break;
+        const cJSON* data = cJSON_GetObjectItemCaseSensitive(j, "data");
+        if (!cJSON_IsObject(data)) break;
+        // Merge values into registry
+        SensorRegistry::UpdateFromJson(data);
+    } while(false);
+    cJSON_Delete(j);
+}
+
+void SerialBridge::rx_task_(void*) {
+    std::string line;
+    line.reserve(256);
+    uint8_t buf[128];
+    for(;;) {
+        int n = uart_read_bytes(uart_num_, buf, sizeof(buf), pdMS_TO_TICKS(50));
+        if (n <= 0) continue;
+        for (int i = 0; i < n; ++i) {
+            char c = (char)buf[i];
+            if (c == '\r') continue; // ignore CR
+            if (c == '\n') {
+                if (!line.empty()) {
+                    handle_rx_line_impl_(line.c_str());
+                    line.clear();
+                }
+            } else {
+                if (line.size() < 1024) line.push_back(c);
+                else {
+                    // too long, reset
+                    line.clear();
+                }
+            }
+        }
+    }
+}
+
