@@ -18,6 +18,10 @@
 #include <wifi_station.h>
 
 #include "serial_bridge.h"
+#include "mcp_server.h"
+#include "sensor_registry.h"
+#include <cJSON.h>
+
 
 #include "esp_io_expander_tca95xx_16bit.h"
 
@@ -240,6 +244,34 @@ private:
     void InitializeIot() {
         led_strip_ = new CircularStrip(BUILTIN_LED_GPIO, 3);
         new LedStripControl(led_strip_);
+
+	        // Register a generic sensor query tool: dynamic keys decided by MCU JSON
+	        auto& mcp_server = McpServer::GetInstance();
+	        mcp_server.AddTool("self.get_sensor",
+	            "读取指定传感器的最新值（键名由下位机通过UART JSON动态决定）。参数: name",
+	            PropertyList({ Property("name", kPropertyTypeString) }),
+	            [](const PropertyList& properties) -> ReturnValue {
+	                std::string key = properties["name"].value<std::string>();
+	                uint64_t age = 0;
+	                double num = 0.0;
+	                if (SensorRegistry::GetDouble(key, num, age)) {
+	                    cJSON* obj = cJSON_CreateObject();
+	                    cJSON_AddStringToObject(obj, "name", key.c_str());
+	                    cJSON_AddNumberToObject(obj, "value", num);
+	                    cJSON_AddNumberToObject(obj, "age_ms", (double)age);
+	                    return obj;
+	                }
+	                std::string text;
+	                if (SensorRegistry::GetString(key, text, age)) {
+	                    cJSON* obj = cJSON_CreateObject();
+	                    cJSON_AddStringToObject(obj, "name", key.c_str());
+	                    cJSON_AddStringToObject(obj, "value", text.c_str());
+	                    cJSON_AddNumberToObject(obj, "age_ms", (double)age);
+	                    return obj;
+	                }
+	                return std::string("{\"error\":\"not_found\"}");
+	            });
+
     }
 
 public:

@@ -45,6 +45,10 @@ private:
     static uart_port_t uart_num_;
     static SemaphoreHandle_t mutex_;
 
+    // RX task: read UART lines and parse MCU -> ESP32 sensor updates
+    static void rx_task_(void*);
+
+
     static int write_line_(const char* tag, const char* type, const char* msg);
     static int escape_json_(const char* in, char* out, size_t out_sz);
 };
