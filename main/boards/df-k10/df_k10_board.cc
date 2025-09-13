@@ -272,6 +272,67 @@ private:
 	                return std::string("{\"error\":\"not_found\"}");
 	            });
 
+	        // List all known sensors and latest values
+	        mcp_server.AddTool("self.list_sensors",
+	            "列出所有已知传感器键名与最新值（来自下位机上报缓存）",
+	            PropertyList(),
+	            [](const PropertyList&) -> ReturnValue {
+	                return SensorRegistry::DumpJson();
+	            });
+
+	        // Get common environmental metrics in one call: temp/hum/CO2
+	        mcp_server.AddTool("self.get_env",
+	            "同时返回温度/湿度/CO₂（若存在）。键名兼容 temp_c|temp、hum_pct|hum、co2_ppm|co2",
+	            PropertyList(),
+	            [](const PropertyList&) -> ReturnValue {
+	                auto make_item = [](const char* name, double v, uint64_t age_ms, const char* unit){
+	                    cJSON* o = cJSON_CreateObject();
+	                    cJSON_AddStringToObject(o, "name", name);
+	                    cJSON_AddNumberToObject(o, "value", v);
+	                    cJSON_AddNumberToObject(o, "age_ms", (double)age_ms);
+	                    if (unit) cJSON_AddStringToObject(o, "unit", unit);
+	                    return o;
+	                };
+	                cJSON* arr = cJSON_CreateArray();
+	                // temperature
+	                {
+	                    const char* keys[] = {"temp_c","temp", nullptr};
+	                    uint64_t age=0; double val=0;
+	                    for (int i=0; keys[i]; ++i) {
+	                        if (SensorRegistry::GetDouble(keys[i], val, age)) {
+	                            cJSON_AddItemToArray(arr, make_item(keys[i], val, age, "°C"));
+	                            break;
+	                        }
+	                    }
+	                }
+	                // humidity
+	                {
+	                    const char* keys[] = {"hum_pct","hum", nullptr};
+	                    uint64_t age=0; double val=0;
+	                    for (int i=0; keys[i]; ++i) {
+	                        if (SensorRegistry::GetDouble(keys[i], val, age)) {
+	                            cJSON_AddItemToArray(arr, make_item(keys[i], val, age, "%RH"));
+	                            break;
+	                        }
+	                    }
+	                }
+	                // CO2
+	                {
+	                    const char* keys[] = {"co2_ppm","co2", nullptr};
+	                    uint64_t age=0; double val=0;
+	                    for (int i=0; keys[i]; ++i) {
+	                        if (SensorRegistry::GetDouble(keys[i], val, age)) {
+	                            cJSON_AddItemToArray(arr, make_item(keys[i], val, age, "ppm"));
+	                            break;
+	                        }
+	                    }
+	                }
+	                cJSON* root = cJSON_CreateObject();
+	                cJSON_AddItemToObject(root, "env", arr);
+	                return root;
+	            });
+
+
     }
 
 public:
