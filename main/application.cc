@@ -492,6 +492,7 @@ void Application::Start() {
 
     protocol_->OnNetworkError([this](const std::string& message) {
         last_error_message_ = message;
+        pending_text_message_.clear();
         xEventGroupSetBits(event_group_, MAIN_EVENT_ERROR);
     });
     protocol_->OnIncomingAudio([this](std::unique_ptr<AudioStreamPacket> packet) {
@@ -505,9 +506,25 @@ void Application::Start() {
             ESP_LOGW(TAG, "Server sample rate %d does not match device output sample rate %d, resampling may cause distortion",
                 protocol_->server_sample_rate(), codec->output_sample_rate());
         }
+
+        if (!pending_text_message_.empty()) {
+            ESP_LOGI(TAG, "Sending pending text message: %s", pending_text_message_.c_str());
+            protocol_->SendUserTextMessage(pending_text_message_);
+            pending_text_message_.clear();
+            // Important: We are now in a "pseudo-listening" state because we just sent a message.
+            // The server will respond with TTS, so we should transition to Speaking state when TTS starts.
+            // But for now, we should not be in Connecting state anymore.
+            // We switch to Idle state because switching to Listening state would send a "Start Listening" command,
+            // which conflicts with the manual "Start Listening" command we just sent in SendUserTextMessage.
+            // Staying in Idle allows the server to process our message and send TTS without interruption.
+            if (device_state_ == kDeviceStateConnecting) {
+                SetDeviceState(kDeviceStateIdle);
+            }
+        }
     });
     protocol_->OnAudioChannelClosed([this, &board]() {
         board.SetPowerSaveMode(true);
+        pending_text_message_.clear();
         Schedule([this]() {
             auto display = Board::GetInstance().GetDisplay();
             display->SetChatMessage("system", "");
@@ -896,6 +913,30 @@ void Application::SendMcpMessage(const std::string& payload) {
     Schedule([this, payload]() {
         if (protocol_) {
             protocol_->SendMcpMessage(payload);
+        }
+    });
+}
+
+void Application::SendUserTextMessage(const std::string& text) {
+    Schedule([this, text]() {
+        if (!protocol_) {
+            ESP_LOGE(TAG, "Protocol not initialized");
+            return;
+        }
+
+        if (protocol_->IsAudioChannelOpened()) {
+            protocol_->SendUserTextMessage(text);
+        } else {
+            ESP_LOGI(TAG, "Audio channel not opened, connecting and pending text...");
+            pending_text_message_ = text;
+            if (device_state_ == kDeviceStateIdle) {
+                SetDeviceState(kDeviceStateConnecting);
+            }
+            if (!protocol_->OpenAudioChannel()) {
+                ESP_LOGE(TAG, "Failed to open audio channel");
+                pending_text_message_.clear();
+                SetDeviceState(kDeviceStateIdle);
+            }
         }
     });
 }

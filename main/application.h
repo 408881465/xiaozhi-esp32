@@ -58,6 +58,7 @@ public:
     void WakeWordInvoke(const std::string& wake_word);
     bool CanEnterSleepMode();
     void SendMcpMessage(const std::string& payload);
+    void SendUserTextMessage(const std::string& text);
     void SetAecMode(AecMode mode);
     AecMode GetAecMode() const { return aec_mode_; }
     void PlaySound(const std::string_view& sound);
@@ -76,6 +77,7 @@ private:
     ListeningMode listening_mode_ = kListeningModeAutoStop;
     AecMode aec_mode_ = kAecOff;
     std::string last_error_message_;
+    std::string pending_text_message_;
     AudioService audio_service_;
 
     bool has_server_time_ = false;

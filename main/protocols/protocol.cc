@@ -78,6 +78,49 @@ void Protocol::SendMcpMessage(const std::string& payload) {
     SendText(message);
 }
 
+void Protocol::SendUserTextMessage(const std::string& text) {
+    ESP_LOGI(TAG, "Sending user text to server: %s", text.c_str());
+
+    // 1. Send listen detect (Optional, mimics wake word)
+    {
+        cJSON* root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "session_id", session_id_.c_str());
+        cJSON_AddStringToObject(root, "type", "listen");
+        cJSON_AddStringToObject(root, "state", "detect");
+        cJSON_AddStringToObject(root, "text", text.c_str());
+        char* json_str = cJSON_PrintUnformatted(root);
+        SendText(json_str);
+        free(json_str);
+        cJSON_Delete(root);
+    }
+
+    // 2. Send listen start
+    {
+        cJSON* root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "session_id", session_id_.c_str());
+        cJSON_AddStringToObject(root, "type", "listen");
+        cJSON_AddStringToObject(root, "state", "start");
+        cJSON_AddStringToObject(root, "mode", "manual");
+        char* json_str = cJSON_PrintUnformatted(root);
+        SendText(json_str);
+        free(json_str);
+        cJSON_Delete(root);
+    }
+
+    // 3. Send listen stop with text
+    {
+        cJSON* root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "session_id", session_id_.c_str());
+        cJSON_AddStringToObject(root, "type", "listen");
+        cJSON_AddStringToObject(root, "state", "stop");
+        cJSON_AddStringToObject(root, "text", text.c_str());
+        char* json_str = cJSON_PrintUnformatted(root);
+        SendText(json_str);
+        free(json_str);
+        cJSON_Delete(root);
+    }
+}
+
 bool Protocol::IsTimeout() const {
     const int kTimeoutSeconds = 120;
     auto now = std::chrono::steady_clock::now();
